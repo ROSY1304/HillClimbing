@@ -1,0 +1,82 @@
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #0d1117;
+    margin: 0;
+    color: #f0f6fc;
+}
+.container {
+    max-width: 900px;
+    margin: 50px auto;
+    padding: 25px;
+    background: #161b22;
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+h1, h3 {
+    text-align: center;
+    color: #58a6ff;
+}
+.form-select {
+    background: #21262d;
+    color: #f0f6fc;
+    border: 2px solid #58a6ff;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 16px;
+    transition: 0.3s;
+}
+.form-select:hover {
+    border-color: #1f6feb;
+    box-shadow: 0 0 10px rgba(31, 111, 235, 0.5);
+}
+.form-select:focus {
+    border-color: #58a6ff;
+    outline: none;
+    box-shadow: 0 0 8px rgba(88, 166, 255, 0.6);
+}
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    color: #f0f6fc;
+    margin-bottom: 10px;
+}
+.checkbox-container label {
+    margin-left: 5px;
+}
+button {
+    background-color: #58a6ff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin-right: 10px;
+}
+button:hover {
+    background-color: #1f6feb;
+}
+button:active {
+    background-color: #1c56d8;
+}
+.message {
+    margin-top: 20px;
+    padding: 10px;
+    text-align: center;
+    border-radius: 8px;
+    font-weight: bold;
+}
+.message.success {
+    background-color: #28a745;
+    color: white;
+}
+.message.error {
+    background-color: #dc3545;
+    color: white;
+}
+svg {
+    margin-top: 30px;
+    background: #161b22;
+    border-radius: 8px;
+}

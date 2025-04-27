@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimización de Rutas</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+          font-family: 'Poppins', sans-serif;
+          background: #ffe6f0; /* rosita clarito */
+          margin: 0;
+          color: #4b2c3f; /* un color más oscurito para el texto */
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 25px;
+            background: #d0b1ef;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        h1, h3 {
+            text-align: center;
+            color: #c084fc;
+        }
+        .form-select {
+            background: #f59fff;
+            color: #f0f6fc;
+            border: 2px solid #c084fc;
+            border-radius: 8px;
+            padding: 5px;
+            font-size: 14px;
+            width: 250px;
+            margin: 10px auto;
+            display: block;
+            transition: 0.3s;
+        }
+        .form-select:hover {
+            border-color: #a855f7;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+        }
+        .form-select:focus {
+            border-color: #9333ea;
+            outline: none;
+            box-shadow: 0 0 10px rgba(147, 51, 234, 0.5);
+        }
+        svg {
+            border: 2px solid #3f0f70;
+            border-radius: 10px;
+            background: #9666f4;
+            margin: 20px auto;
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 500px;
+        }
+        .message {
+            font-size: 16px;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .message.success {
+            color: #9333ea;
+            background-color: #f3e8ff;
+        }
+        .message.error {
+            color: #b91d1d;
+            background-color: #fddcdc;
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .city-button {
+            background: #e6b1ff;
+            color: #f0f6fc;
+            border: 2px solid #c084fc;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .city-button.selected {
+            background: #a855f7;
+            color: #ffffff;
+            border-color: #9333ea;
+        }
+        .city-button:hover {
+            background: #a855f7;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HILL CLIMBING</h1>
+        
+        <label for="start-city">SALIDA:</label>
+        <select id="start-city" class="form-select">
+            <option value="">Selecciona una ciudad</option>
+        </select>
+
+        <label for="end-city">LLEGADA:</label>
+        <select id="end-city" class="form-select">
+            <option value="">Selecciona una ciudad</option>
+        </select>
+
+        <h3>CIUDADES VISITADAS:</h3>
+        <div id="city-list" class="button-group"></div>
+
+        <button class="btn btn-success" onclick="generarGrafo()">Buscar Ruta Optima</button>
+        <button class="btn btn-danger" onclick="limpiarTodo()">Limpiar Datos</button>
+
+        <div id="status-message" class="message"></div>
+
+        <h3>Ruta Óptima:</h3>
+        <p id="resultado-optima"></p>
+
+        <h3>MAPEO:</h3>
+        <p id="resultado"></p>
+
+        <svg id="grafo" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+
+    <script>
+        const ciudades = ["Toluca", "Guadalajara", "Monterrey", "Jiloyork", "Atlacomulco", "QuintanaRoo", "CDMX", "Aguascalientes", "Michoacan", "QRO"];
+        const svg = d3.select("#grafo");
+
+        window.onload = function () {
+            const dropdownStart = document.getElementById("start-city");
+            const dropdownEnd = document.getElementById("end-city");
+            const cityList = document.getElementById("city-list");
+
+            ciudades.forEach(ciudad => {
+                dropdownStart.innerHTML += `<option value="${ciudad}">${ciudad}</option>`;
+                dropdownEnd.innerHTML += `<option value="${ciudad}">${ciudad}</option>`;
+                
+                const button = document.createElement("button");
+                button.className = "city-button";
+                button.textContent = ciudad;
+                button.onclick = () => button.classList.toggle("selected");
+                button.value = ciudad;
+                cityList.appendChild(button);
+            });
+        };
+
+        function actualizarMensaje(texto, tipo) {
+            const mensaje = document.getElementById("status-message");
+            mensaje.textContent = texto;
+            mensaje.className = `message ${tipo}`;
+        }
+
+        function generarGrafo() {
+            const ciudadInicio = document.getElementById("start-city").value;
+            const ciudadLlegada = document.getElementById("end-city").value;
+            const seleccionadas = Array.from(document.querySelectorAll(".city-button.selected")).map(btn => btn.value);
+
+            if (!ciudadInicio || !ciudadLlegada) {
+                actualizarMensaje("Selecciona las ciudades de inicio y llegada.", "error");
+                return;
+            }
+            if (seleccionadas.length === 0) {
+                actualizarMensaje("Selecciona al menos una ciudad intermedia.", "error");
+                return;
+            }
+
+            const payload = { start_city: ciudadInicio, end_city: ciudadLlegada, cities: seleccionadas };
+            const rutasOptimas = calcularRutas(payload);
+
+            mostrarResultados(rutasOptimas);
+            actualizarMensaje("¡Ruta optimizada correctamente!", "success");
+        }
+
+        function calcularRutas({ start_city, end_city, cities }) {
+            const allCities = [...new Set([start_city, ...cities, end_city])];
+            const enlaces = allCities.map((ciudad, i, arr) => {
+                if (i < arr.length - 1) {
+                    return { source: ciudad, target: arr[i + 1], distancia: Math.random() * 30 + 10 };
+                }
+            }).filter(Boolean);
+
+            const distanciaTotal = enlaces.reduce((acc, enlace) => acc + enlace.distancia, 0);
+            return [
+                { ruta: allCities, distancia: distanciaTotal, enlaces },
+            ];
+        }
+
+        function mostrarResultados(rutas) {
+            const rutaOptima = rutas[0];
+            document.getElementById("resultado-optima").textContent = `Ruta: ${rutaOptima.ruta.join(" → ")} | Distancia total: ${rutaOptima.distancia.toFixed(2)} km`;
+
+            const otrasRutas = rutas.slice(1).map((r, i) => `Ruta ${i + 2}: ${r.ruta.join(" → ")} | Distancia total: ${r.distancia.toFixed(2)} km`).join("<br>");
+            document.getElementById("resultado").innerHTML = otrasRutas;
+
+            dibujarGrafo(rutaOptima.ruta, rutaOptima.enlaces);
+        }
+
+        function dibujarGrafo(ciudades, enlaces) {
+            svg.selectAll("*").remove();
+            const radius = 250, centerX = 450, centerY = 300;
+            const nodes = ciudades.map((ciudad, i) => ({
+                id: ciudad,
+                x: centerX + radius * Math.cos((2 * Math.PI * i) / ciudades.length),
+                y: centerY + radius * Math.sin((2 * Math.PI * i) / ciudades.length)
+            }));
+
+            svg.selectAll("line")
+                .data(enlaces)
+                .enter()
+                .append("line")
+                .attr("x1", d => nodes.find(n => n.id === d.source).x)
+                .attr("y1", d => nodes.find(n => n.id === d.source).y)
+                .attr("x2", d => nodes.find(n => n.id === d.target).x)
+                .attr("y2", d => nodes.find(n => n.id === d.target).y)
+                .style("stroke", "#c084fc")
+                .style("stroke-width", 2);
+
+            svg.selectAll(".node")
+                .data(nodes)
+                .enter()
+                .append("circle")
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", 10)
+                .style("fill", "#9333ea");
+
+            svg.selectAll(".node-label")
+                .data(nodes)
+                .enter()
+                .append("text")
+                .text(d => d.id)
+                .attr("x", d => d.x + 15)
+                .attr("y", d => d.y + 5)
+                .style("fill", "#f0f6fc")
+                .style("font-size", "12px")
+                .style("font-weight", "bold");
+
+            svg.selectAll(".distance-label")
+                .data(enlaces)
+                .enter()
+                .append("text")
+                .attr("x", d => (nodes.find(n => n.id === d.source).x + nodes.find(n => n.id === d.target).x) / 2)
+                .attr("y", d => (nodes.find(n => n.id === d.source).y + nodes.find(n => n.id === d.target).y) / 2 - 10)
+                .text(d => `${d.distancia.toFixed(2)} km`)
+                .style("fill", "violet")
+                .style("font-size", "12px")
+                .style("font-weight", "bold");
+        }
+
+        function limpiarTodo() {
+            document.getElementById("start-city").value = "";
+            document.getElementById("end-city").value = "";
+
+            document.querySelectorAll(".city-button.selected").forEach(btn => btn.classList.remove("selected"));
+
+            svg.selectAll("*").remove();
+            document.getElementById("resultado-optima").textContent = "";
+            document.getElementById("resultado").innerHTML = "";
+            actualizarMensaje("¡Todos los campos han sido limpiados con éxito!", "success");
+        }
+    </script>
+</body>
+</html>
