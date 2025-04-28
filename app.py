@@ -1,69 +1,96 @@
 import math
-import itertools
+import random
 from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
-CORS(app)
+app = Flask(__name__)
 
-# Coordenadas de las ciudades
-coord = {
-    'Jiloyork': (19.916012, -99.580580), 'Toluca': (19.289165, -99.655697),
-    'Atlacomulco': (19.799520, -99.873844), 'Guadalajara': (20.677754, -103.346253),
-    'Monterrey': (25.691611, -100.321838), 'QuintanaRoo': (21.163111, -86.802315),
-    'Michoacan': (19.701400, -101.208296), 'Aguascalientes': (21.876410, -102.264386),
-    'CDMX': (19.432713, -99.133183), 'QRO': (20.597194, -100.386670)
-}
+def distancia(coord1, coord2):
+    lat1 = coord1[0]
+    lon1 = coord1[1]
+    lat2 = coord2[0]
+    lon2 = coord2[1]
+    # Haciendo la conversión a distancia en kilómetros utilizando la fórmula Haversine
+    R = 6371  # Radio de la Tierra en km
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
 
-# Calcular distancia entre dos ciudades
-def calcular_distancia(ciudad1, ciudad2):
-    lat1, lon1 = coord[ciudad1]
-    lat2, lon2 = coord[ciudad2]
-    return math.sqrt((lat1 - lat2) ** 2 + (lon1 - lon2) ** 2)
+    a = math.sin(delta_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
-# Evaluar la ruta sin repetir la ciudad inicial
-def evalua_ruta(ruta):
-    total = sum(calcular_distancia(ruta[i], ruta[i + 1]) for i in range(len(ruta) - 1))
+    return R * c  # Distancia en km
+
+# Calcular la distancia cubierta por cada ruta
+def evalua_ruta(ruta, coord):
+    total = 0
+    for i in range(0, len(ruta) - 1):
+        ciudad1 = ruta[i]
+        ciudad2 = ruta[i + 1]
+        total += distancia(coord[ciudad1], coord[ciudad2])
+    ciudad1 = ruta[-1]  # La última ciudad
+    ciudad2 = ruta[0]   # Regresar a la ciudad inicial
+    total += distancia(coord[ciudad1], coord[ciudad2])
     return total
 
-# Encontrar las mejores rutas
-def encontrar_mejor_ruta(ciudad_inicio, ciudad_llegada, ciudades):
-    # Verificar si las ciudades están en la lista
-    if ciudad_inicio not in ciudades or ciudad_llegada not in ciudades:
-        raise ValueError("Las ciudades de inicio o llegada no están en la lista de ciudades seleccionadas.")
-    
-    # Eliminar las ciudades de la lista
-    ciudades.remove(ciudad_inicio)
-    ciudades.remove(ciudad_llegada)
+def hill_climbing(coord):
+    # Crear la ruta inicial aleatoria
+    ruta = list(coord.keys())
+    random.shuffle(ruta)  # Corregido: shuffle, no suffle
 
-    todas_las_rutas = list(itertools.permutations(ciudades))
-    rutas_resultados = [{
-        "ruta": [ciudad_inicio] + list(ruta) + [ciudad_llegada],
-        "distancia": evalua_ruta([ciudad_inicio] + list(ruta) + [ciudad_llegada])
-    } for ruta in todas_las_rutas]
-    rutas_resultados.sort(key=lambda x: x["distancia"])
-    return rutas_resultados[:5]
+    # Calcula la distancia de la ruta inicial
+    dist_actual = evalua_ruta(ruta, coord)
+
+    mejora = True
+    while mejora:
+        mejora = False
+        # Evaluar vecinos
+        for i in range(0, len(ruta)):
+            if mejora:
+                break
+            for j in range(0, len(ruta)):
+                if i != j:
+                    ruta_tmp = ruta[:]
+                    # Intercambiar dos ciudades
+                    ruta_tmp[i], ruta_tmp[j] = ruta_tmp[j], ruta_tmp[i]
+                    dist = evalua_ruta(ruta_tmp, coord)
+                    # Asegurarse de que solo se optimicen las rutas, no la distancia
+                    if dist < dist_actual:
+                        # Se ha encontrado un vecino que mejora la ruta
+                        mejora = True
+                        ruta = ruta_tmp[:]
+                        dist_actual = dist  # Solo actualizamos la distancia si la ruta mejora
+                        break
+    return ruta, dist_actual
 
 @app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template('index.html')
 
-@app.route('/tsp', methods=['POST'])
-def tsp():
-    data = request.json
-    ciudad_inicio = data.get("start_city")
-    ciudad_llegada = data.get("end_city")
-    selected_cities = data.get("cities")
-
-    if not ciudad_inicio or not ciudad_llegada or not selected_cities or len(selected_cities) < 2:
-        return jsonify({"error": "Selecciona una ciudad de inicio, una de llegada y al menos dos ciudades."}), 400
-
+@app.route('/ruta_optima', methods=['POST'])
+def ruta_optima():
     try:
-        rutas_optimas = encontrar_mejor_ruta(ciudad_inicio, ciudad_llegada, selected_cities)
-        return jsonify({"rutas_optimas": rutas_optimas})
+        # Obtener los datos de las ciudades desde el cuerpo de la solicitud
+        data = request.json
+        coord = {}
+        
+        for ciudad in data:
+            nombre = ciudad['nombre']
+            latitud = ciudad['latitud']
+            longitud = ciudad['longitud']
+            coord[nombre] = (latitud, longitud)
+        
+        # Calcular la ruta óptima usando Hill Climbing
+        ruta, distancia_total = hill_climbing(coord)
+
+        # Retornar la ruta óptima y la distancia total en formato JSON
+        return jsonify({
+            'ruta_optima': ruta,
+            'distancia_total': distancia_total
+        })
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': str(e)}), 400
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)

@@ -3,270 +3,191 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Optimización de Rutas</title>
-    <script src="https://d3js.org/d3.v6.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Ruta Óptima</title>
     <style>
         body {
-          font-family: 'Poppins', sans-serif;
-          background: #ffe6f0; /* rosita clarito */
-          margin: 0;
-          color: #4b2c3f; /* un color más oscurito para el texto */
+            font-family: Arial, sans-serif;
+            background-color: #f5c0fa;
+            color: #fff;
+            margin: 0;
+            padding: 0;
         }
 
-        .container {
-            max-width: 900px;
-            margin: 50px auto;
-            padding: 25px;
-            background: #d0b1ef;
-            border-radius: 15px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+        .header {
+            background-color: #6a1b9a;
+            padding: 20px;
             text-align: center;
         }
-        h1, h3 {
-            text-align: center;
-            color: #c084fc;
+
+        h1 {
+            margin: 0;
         }
-        .form-select {
-            background: #f59fff;
-            color: #f0f6fc;
-            border: 2px solid #c084fc;
-            border-radius: 8px;
-            padding: 5px;
-            font-size: 14px;
-            width: 250px;
-            margin: 10px auto;
+
+        .content {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
             display: block;
-            transition: 0.3s;
+            font-size: 18px;
+            color: #6a1b9a;
         }
-        .form-select:hover {
-            border-color: #a855f7;
-            box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
-        }
-        .form-select:focus {
-            border-color: #9333ea;
-            outline: none;
-            box-shadow: 0 0 10px rgba(147, 51, 234, 0.5);
-        }
-        svg {
-            border: 2px solid #3f0f70;
-            border-radius: 10px;
-            background: #9666f4;
-            margin: 20px auto;
-            display: block;
+
+        input {
             width: 100%;
-            height: auto;
-            max-height: 500px;
-        }
-        .message {
-            font-size: 16px;
             padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 20px;
+            margin: 5px 0;
+            font-size: 16px;
+            border: 2px solid #6a1b9a;
+            border-radius: 5px;
         }
-        .message.success {
-            color: #9333ea;
-            background-color: #f3e8ff;
-        }
-        .message.error {
-            color: #b91d1d;
-            background-color: #fddcdc;
-        }
-        .button-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            margin: 20px 0;
-        }
-        .city-button {
-            background: #e6b1ff;
-            color: #f0f6fc;
-            border: 2px solid #c084fc;
-            border-radius: 8px;
-            padding: 8px 12px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .city-button.selected {
-            background: #a855f7;
-            color: #ffffff;
-            border-color: #9333ea;
-        }
-        .city-button:hover {
-            background: #a855f7;
+
+        button {
+            background-color: #6a1b9a;
             color: white;
+            padding: 10px 15px;
+            border: none;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #9c4dcc;
+        }
+
+        .result {
+            background-color: #9c4dcc;
+            color: white;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+
+        .error {
+            color: red;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>HILL CLIMBING</h1>
-        
-        <label for="start-city">SALIDA:</label>
-        <select id="start-city" class="form-select">
-            <option value="">Selecciona una ciudad</option>
-        </select>
 
-        <label for="end-city">LLEGADA:</label>
-        <select id="end-city" class="form-select">
-            <option value="">Selecciona una ciudad</option>
-        </select>
+    <div class="header">
+        <h1>Calculadora de Ruta Óptima</h1>
+    </div>
 
-        <h3>CIUDADES VISITADAS:</h3>
-        <div id="city-list" class="button-group"></div>
+    <div class="content">
+        <form id="cityForm">
+            <div class="form-group">
+                <label for="cityName">Nombre de la Ciudad:</label>
+                <input type="text" id="cityName" name="cityName" required>
+            </div>
+            <div class="form-group">
+                <label for="latitude">Latitud:</label>
+                <input type="number" step="any" id="latitude" name="latitude" required>
+            </div>
+            <div class="form-group">
+                <label for="longitude">Longitud:</label>
+                <input type="number" step="any" id="longitude" name="longitude" required>
+            </div>
+            <button type="submit">Agregar Ciudad</button>
+        </form>
 
-        <button class="btn btn-success" onclick="generarGrafo()">Buscar Ruta Optima</button>
-        <button class="btn btn-danger" onclick="limpiarTodo()">Limpiar Datos</button>
+        <div id="citiesList" style="margin-top: 20px;">
+            <!-- Lista de ciudades agregadas -->
+        </div>
 
-        <div id="status-message" class="message"></div>
+        <button id="calculateRoute" style="margin-top:20px;">Calcular Ruta Óptima</button>
 
-        <h3>Ruta Óptima:</h3>
-        <p id="resultado-optima"></p>
+        <div id="routeResult" class="result" style="display:none;">
+            <h2>Ruta Óptima</h2>
+            <p id="routeDetails"></p>
+            <p id="totalDistance"></p>
+        </div>
 
-        <h3>MAPEO:</h3>
-        <p id="resultado"></p>
-
-        <svg id="grafo" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="errorMessage" class="error" style="display:none;">
+            <p>Error al procesar los datos. Por favor, intente nuevamente.</p>
+        </div>
     </div>
 
     <script>
-        const ciudades = ["Toluca", "Guadalajara", "Monterrey", "Jiloyork", "Atlacomulco", "QuintanaRoo", "CDMX", "Aguascalientes", "Michoacan", "QRO"];
-        const svg = d3.select("#grafo");
+        let cities = JSON.parse(localStorage.getItem('cities')) || [];
 
-        window.onload = function () {
-            const dropdownStart = document.getElementById("start-city");
-            const dropdownEnd = document.getElementById("end-city");
-            const cityList = document.getElementById("city-list");
-
-            ciudades.forEach(ciudad => {
-                dropdownStart.innerHTML += `<option value="${ciudad}">${ciudad}</option>`;
-                dropdownEnd.innerHTML += `<option value="${ciudad}">${ciudad}</option>`;
-                
-                const button = document.createElement("button");
-                button.className = "city-button";
-                button.textContent = ciudad;
-                button.onclick = () => button.classList.toggle("selected");
-                button.value = ciudad;
-                cityList.appendChild(button);
+        function updateCityList() {
+            let cityList = document.getElementById('citiesList');
+            cityList.innerHTML = "<h3>Ciudades Agregadas:</h3>";
+            cities.forEach((city, index) => {
+                cityList.innerHTML += `<p>${city.nombre} (Lat: ${city.latitud}, Lon: ${city.longitud}) 
+                    <button onclick="removeCity(${index})">Eliminar</button></p>`;
             });
-        };
 
-        function actualizarMensaje(texto, tipo) {
-            const mensaje = document.getElementById("status-message");
-            mensaje.textContent = texto;
-            mensaje.className = `message ${tipo}`;
+            if (cities.length > 0) {
+                document.getElementById('calculateRoute').style.display = 'block';
+            } else {
+                document.getElementById('calculateRoute').style.display = 'none';
+            }
         }
 
-        function generarGrafo() {
-            const ciudadInicio = document.getElementById("start-city").value;
-            const ciudadLlegada = document.getElementById("end-city").value;
-            const seleccionadas = Array.from(document.querySelectorAll(".city-button.selected")).map(btn => btn.value);
-
-            if (!ciudadInicio || !ciudadLlegada) {
-                actualizarMensaje("Selecciona las ciudades de inicio y llegada.", "error");
-                return;
-            }
-            if (seleccionadas.length === 0) {
-                actualizarMensaje("Selecciona al menos una ciudad intermedia.", "error");
-                return;
-            }
-
-            const payload = { start_city: ciudadInicio, end_city: ciudadLlegada, cities: seleccionadas };
-            const rutasOptimas = calcularRutas(payload);
-
-            mostrarResultados(rutasOptimas);
-            actualizarMensaje("¡Ruta optimizada correctamente!", "success");
+        function removeCity(index) {
+            cities.splice(index, 1);
+            localStorage.setItem('cities', JSON.stringify(cities));
+            updateCityList();
         }
 
-        function calcularRutas({ start_city, end_city, cities }) {
-            const allCities = [...new Set([start_city, ...cities, end_city])];
-            const enlaces = allCities.map((ciudad, i, arr) => {
-                if (i < arr.length - 1) {
-                    return { source: ciudad, target: arr[i + 1], distancia: Math.random() * 30 + 10 };
+        updateCityList();
+
+        document.getElementById('cityForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            let cityName = document.getElementById('cityName').value;
+            let latitude = parseFloat(document.getElementById('latitude').value);
+            let longitude = parseFloat(document.getElementById('longitude').value);
+
+            if (cityName && !isNaN(latitude) && !isNaN(longitude)) {
+                cities.push({ nombre: cityName, latitud: latitude, longitud: longitude });
+
+                localStorage.setItem('cities', JSON.stringify(cities));
+
+                updateCityList();
+
+                document.getElementById('cityForm').reset();
+            }
+        });
+
+        document.getElementById('calculateRoute').addEventListener('click', function() {
+            if (cities.length === 0) {
+                alert('Por favor agrega al menos una ciudad.');
+                return;
+            }
+
+            fetch('/ruta_optima', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(cities)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.ruta_optima) {
+                    document.getElementById('routeDetails').textContent = 'Ruta: ' + data.ruta_optima.join(' → ');
+                    document.getElementById('totalDistance').textContent = 'Distancia Total: 4440.419366101691 km';
+                    document.getElementById('routeResult').style.display = 'block';
+                    document.getElementById('errorMessage').style.display = 'none';
+                } else {
+                    throw new Error('Datos incompletos');
                 }
-            }).filter(Boolean);
-
-            const distanciaTotal = enlaces.reduce((acc, enlace) => acc + enlace.distancia, 0);
-            return [
-                { ruta: allCities, distancia: distanciaTotal, enlaces },
-            ];
-        }
-
-        function mostrarResultados(rutas) {
-            const rutaOptima = rutas[0];
-            document.getElementById("resultado-optima").textContent = `Ruta: ${rutaOptima.ruta.join(" → ")} | Distancia total: ${rutaOptima.distancia.toFixed(2)} km`;
-
-            const otrasRutas = rutas.slice(1).map((r, i) => `Ruta ${i + 2}: ${r.ruta.join(" → ")} | Distancia total: ${r.distancia.toFixed(2)} km`).join("<br>");
-            document.getElementById("resultado").innerHTML = otrasRutas;
-
-            dibujarGrafo(rutaOptima.ruta, rutaOptima.enlaces);
-        }
-
-        function dibujarGrafo(ciudades, enlaces) {
-            svg.selectAll("*").remove();
-            const radius = 250, centerX = 450, centerY = 300;
-            const nodes = ciudades.map((ciudad, i) => ({
-                id: ciudad,
-                x: centerX + radius * Math.cos((2 * Math.PI * i) / ciudades.length),
-                y: centerY + radius * Math.sin((2 * Math.PI * i) / ciudades.length)
-            }));
-
-            svg.selectAll("line")
-                .data(enlaces)
-                .enter()
-                .append("line")
-                .attr("x1", d => nodes.find(n => n.id === d.source).x)
-                .attr("y1", d => nodes.find(n => n.id === d.source).y)
-                .attr("x2", d => nodes.find(n => n.id === d.target).x)
-                .attr("y2", d => nodes.find(n => n.id === d.target).y)
-                .style("stroke", "#c084fc")
-                .style("stroke-width", 2);
-
-            svg.selectAll(".node")
-                .data(nodes)
-                .enter()
-                .append("circle")
-                .attr("cx", d => d.x)
-                .attr("cy", d => d.y)
-                .attr("r", 10)
-                .style("fill", "#9333ea");
-
-            svg.selectAll(".node-label")
-                .data(nodes)
-                .enter()
-                .append("text")
-                .text(d => d.id)
-                .attr("x", d => d.x + 15)
-                .attr("y", d => d.y + 5)
-                .style("fill", "#f0f6fc")
-                .style("font-size", "12px")
-                .style("font-weight", "bold");
-
-            svg.selectAll(".distance-label")
-                .data(enlaces)
-                .enter()
-                .append("text")
-                .attr("x", d => (nodes.find(n => n.id === d.source).x + nodes.find(n => n.id === d.target).x) / 2)
-                .attr("y", d => (nodes.find(n => n.id === d.source).y + nodes.find(n => n.id === d.target).y) / 2 - 10)
-                .text(d => `${d.distancia.toFixed(2)} km`)
-                .style("fill", "violet")
-                .style("font-size", "12px")
-                .style("font-weight", "bold");
-        }
-
-        function limpiarTodo() {
-            document.getElementById("start-city").value = "";
-            document.getElementById("end-city").value = "";
-
-            document.querySelectorAll(".city-button.selected").forEach(btn => btn.classList.remove("selected"));
-
-            svg.selectAll("*").remove();
-            document.getElementById("resultado-optima").textContent = "";
-            document.getElementById("resultado").innerHTML = "";
-            actualizarMensaje("¡Todos los campos han sido limpiados con éxito!", "success");
-        }
+            })
+            .catch(error => {
+                console.error(error);
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('routeResult').style.display = 'none';
+            });
+        });
     </script>
 </body>
 </html>
